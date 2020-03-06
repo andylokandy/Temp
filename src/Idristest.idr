@@ -22,17 +22,29 @@ beFalse False = Success
 beFalse True = Failure "Expecting False, but got True"
 
 export
-data Suite = Group String (List Suite) | Test String TestResult
+be : Eq a => Show a => a -> a -> TestResult
+be x y =
+  if x == y then Success
+  else Failure ("Expecting " ++ (show x) ++ ", but " ++ (show y) ++ " found")
 
 export
+notBe : Eq a => Show a => a -> a -> TestResult
+notBe x y =
+  if x /= y then Success
+  else Failure ("Both values are " ++ (show x))
+
+export
+data Suite = Group String (List Suite) | Test String TestResult
+
+public export
 interface SuiteBuilder a where
   buildSuite : String -> a -> Suite
 
-export
+public export
 SuiteBuilder TestResult where
   buildSuite description tr = Test description tr
 
-export
+public export
 SuiteBuilder (List Suite) where
   buildSuite description ls = Group description ls
 
@@ -79,9 +91,11 @@ run s =
   let
     result = evalSuite s
     totalTests = (successful result) + (failed result)
-    sufix = if failed result == 0 then "\nSuccessful: " ++ (show (successful result)) ++ "/" ++ (show totalTests) ++ "\n\nSUCCES"
+    ok = failed result == 0
+    sufix = if ok then "\nSuccessful: " ++ (show (successful result)) ++ "/" ++ (show totalTests) ++ "\n\nSUCCES"
             else "\nFailed: " ++ (show (failed result)) ++ "/" ++ (show totalTests) ++ "\n\nFAILED"
     fullOut = (out result) ++ sufix
   in
-    putStrLn fullOut
-
+    do
+      putStrLn fullOut
+      (if ok then pure () else exit 1)
